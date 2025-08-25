@@ -42,7 +42,7 @@ void onWrite(uint8_t reg, uint8_t length)
 			if (i2c_registers[reg] != 0xff)
 			{
 				nixieTurnOn(nixieFromUINT8(i2c_registers[reg] & 0b1111));
-				if (i2c_registers[I2C_NIXIE_VALUE_REGISTER] >> 7 == 0b1)
+				if ((i2c_registers[I2C_NIXIE_VALUE_REGISTER] & 0b10000000) != 0)
 				{
 					nixieCommaOn();
 				}
