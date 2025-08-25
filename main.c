@@ -9,11 +9,13 @@
 #define I2C_HV_VALUE_REGISTER_LB 2
 #define I2C_HV_VALUE_REGISTER_HB 3
 
-#define SYSTEM_VOLTAGE_V 5
-#define HV_UPPER_LIMIT_MV 3500
+#define I2C_DEFAULT_ADDRESS (uint8_t)(0x20)
+
+#define SYSTEM_VOLTAGE_MV 3300
+#define HV_UPPER_LIMIT_MV 3300
 #define HV_LOWER_LIMIT_MV 2700
-#define HV_UPPER_LIMIT (HV_UPPER_LIMIT_MV / SYSTEM_VOLTAGE_V)
-#define HV_LOWER_LIMIT (HV_LOWER_LIMIT_MV / SYSTEM_VOLTAGE_V)
+#define HV_UPPER_LIMIT ((1000 * HV_UPPER_LIMIT_MV) / SYSTEM_VOLTAGE_MV)
+#define HV_LOWER_LIMIT ((1000 * HV_LOWER_LIMIT_MV) / SYSTEM_VOLTAGE_MV)
 
 volatile uint8_t i2c_registers[4] = {0x00};
 bool change_address = false;
@@ -113,17 +115,18 @@ int main()
 
 	if (*i2c_address == 0xff)
 	{
-		// Address not set yet, use 0x20
-		SetupI2CSlave(0x20, i2c_registers, sizeof(i2c_registers), onWrite, onRead, false);
+		// Address not set yet, use I2C_DEFAULT_ADDRESS
+		SetupI2CSlave(I2C_DEFAULT_ADDRESS, i2c_registers, sizeof(i2c_registers), onWrite, onRead, false);
+		i2c_registers[I2C_ADDRESS_REGISTER] = I2C_DEFAULT_ADDRESS;
 		blink_delay_ms = 100;
 	}
 	else
 	{
 		SetupI2CSlave(*i2c_address, i2c_registers, sizeof(i2c_registers), onWrite, onRead, false);
+		i2c_registers[I2C_ADDRESS_REGISTER] = *i2c_address;
 		blink_delay_ms = 250;
 	}
 
-	i2c_registers[I2C_ADDRESS_REGISTER] = *i2c_address;
 	i2c_registers[I2C_NIXIE_VALUE_REGISTER] = 0xff; // Nixie off
 
 	funDigitalWrite(PA2, FUN_LOW);
@@ -132,6 +135,10 @@ int main()
 
 	while (1)
 	{
+		// if (i2c_registers[I2C_ADDRESS_REGISTER] != I2C_DEFAULT_ADDRESS)
+		// {
+			// __WFI();
+		// }
 		if (change_address)
 		{
 			funDigitalWrite(PA2, FUN_HIGH);
@@ -186,10 +193,12 @@ int main()
 			PFIC->SCTLR |= 0x80000000;
 		}
 
+		// TODO: add systick to make sure the unsafe_hv is being updated every X ms
 		hv_value = (uint16_t)funAnalogRead(ANALOG_1);
 		i2c_registers[I2C_HV_VALUE_REGISTER_LB] = (uint8_t)(hv_value & 0xff);
 		i2c_registers[I2C_HV_VALUE_REGISTER_HB] = (uint8_t)(hv_value >> 8);
-		unsafe_hv = hv_value > HV_UPPER_LIMIT;
+		// unsafe_hv = hv_value > HV_UPPER_LIMIT;
+		unsafe_hv = false; // TODO: replace 20k resistor with 15k to measure voltage
 		if (unsafe_hv)
 		{
 			nixieCommaOff();
@@ -199,10 +208,10 @@ int main()
 		}
 		else
 		{
+			// funDigitalWrite(PA2, FUN_HIGH);
+			// Delay_Ms(blink_delay_ms);
 			funDigitalWrite(PA2, FUN_LOW);
-			Delay_Ms(blink_delay_ms);
-			funDigitalWrite(PA2, FUN_HIGH);
-			Delay_Ms(blink_delay_ms);
+			// Delay_Ms(blink_delay_ms);
 		}
 	}
 }
