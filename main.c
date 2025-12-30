@@ -23,7 +23,7 @@ typedef enum : uint8_t {
 #define HV_UPPER_LIMIT ((1000 * HV_UPPER_LIMIT_MV) / SYSTEM_VOLTAGE_MV)
 #define HV_LOWER_LIMIT ((1000 * HV_LOWER_LIMIT_MV) / SYSTEM_VOLTAGE_MV)
 
-#define DEFAULT_LOOP_TIME_US 990U
+#define DEFAULT_LOOP_TIME_US 450U
 
 volatile uint8_t i2c_registers[4] = {0x00};
 bool change_address = false;
@@ -194,7 +194,7 @@ int main() {
             funDigitalWrite(LED_PIN, FUN_HIGH);
         } else {
             funDigitalWrite(LED_PIN, FUN_LOW);
-            Nixie_PWM_RefreshEvery1ms();
+            Nixie_PWM_RefreshEvery500us();
         }
         Delay_Us(DEFAULT_LOOP_TIME_US);
     }

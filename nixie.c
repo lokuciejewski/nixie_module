@@ -2,11 +2,11 @@
 #include "assert.h"
 #include "stdbool.h"
 
-#define PWM_MAX_COUNTER 10U
+#define PWM_MAX_COUNTER 20U
 
 static NixieSegment current_segment = NIXIE_SEG_NO_SEG;
 static uint8_t pwm_counter = 0;
-static uint8_t pwm_duty_cycle_percent_x10 = 5;
+static uint8_t pwm_duty_cycle_setting = 10; // x5, so 10 for 50% etc.
 static bool comma_on = false;
 static bool brigthness_compensation = true;
 
@@ -24,9 +24,9 @@ void Nixie_Init(void) {
     funPinMode(NIXIE_SEG_PL, GPIO_Speed_10MHz | GPIO_CNF_OUT_PP);
 }
 
-void Nixie_PWM_RefreshEvery1ms(void) {
+void Nixie_PWM_RefreshEvery500us(void) {
     if (current_segment != NIXIE_SEG_NO_SEG) {
-        if (pwm_counter < pwm_duty_cycle_percent_x10) {
+        if (pwm_counter < pwm_duty_cycle_setting) {
             funDigitalWrite(current_segment, FUN_HIGH);
             if (comma_on) {
                 funDigitalWrite(NIXIE_SEG_PL, FUN_HIGH);
@@ -42,8 +42,8 @@ void Nixie_PWM_RefreshEvery1ms(void) {
 }
 
 void Nixie_PWM_SetDutyCycle(uint8_t new_duty_cycle) {
-    if (new_duty_cycle <= 10) {
-        pwm_duty_cycle_percent_x10 = new_duty_cycle;
+    if (new_duty_cycle <= PWM_MAX_COUNTER) {
+        pwm_duty_cycle_setting = new_duty_cycle;
     }
 }
 
@@ -105,7 +105,7 @@ void Nixie_CommaOn(void) {
         funDigitalWrite(NIXIE_SEG_PL, FUN_HIGH);
         comma_on = true;
         if (brigthness_compensation) {
-            pwm_duty_cycle_percent_x10 = (pwm_duty_cycle_percent_x10 + 1) % PWM_MAX_COUNTER;
+            pwm_duty_cycle_setting = (pwm_duty_cycle_setting + 1) % PWM_MAX_COUNTER;
         }
     }
 }
@@ -114,8 +114,8 @@ void Nixie_CommaOff(void) {
     if (comma_on) {
         funDigitalWrite(NIXIE_SEG_PL, FUN_LOW);
         comma_on = false;        
-        if (brigthness_compensation && pwm_duty_cycle_percent_x10 > 0) {
-            pwm_duty_cycle_percent_x10 = (pwm_duty_cycle_percent_x10 - 1);
+        if (brigthness_compensation && pwm_duty_cycle_setting > 0) {
+            pwm_duty_cycle_setting = (pwm_duty_cycle_setting - 1);
         }
     }
 }
