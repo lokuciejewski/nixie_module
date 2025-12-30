@@ -19,9 +19,13 @@ typedef enum {
 } NixieSegment;
 
 void Nixie_Init(void);
-/// Should be called every 10ms for software PWM
+/// Should be called every 1ms for software PWM
 void Nixie_PWM_RefreshEvery1ms(void);
+/// Value needs to be between 0 and 10 for 0% to 100%
+void Nixie_PWM_SetDutyCycle(uint8_t new_duty_cycle);
 void Nixie_DisplayRefresh(uint16_t delay_ms);
+void Nixie_EnableCommaBrightnessCompensation(void);
+void Nixie_DisableCommaBrightnessCompensation(void);
 
 NixieSegment Nixie_GetCurrentSeg(void);
 bool Nixie_IsCommaOn(void);

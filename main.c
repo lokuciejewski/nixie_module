@@ -3,12 +3,17 @@
 #include "nixie.h"
 #include "stdio.h"
 
-#define I2C_ADDRESS_REGISTER 0U
-#define I2C_NIXIE_VALUE_REGISTER 1U
-#define I2C_HV_VALUE_REGISTER_LB 2U
-#define I2C_HV_VALUE_REGISTER_HB 3U
-#define I2C_Nixie_DisplayRefresh_REGISTER 4U
-#define I2C_NIXIE_PWM_VALUE_REGISTER 5U
+#define LED_PIN PA2
+
+typedef enum : uint8_t {
+    I2cReg_Address = 0,
+    I2cReg_NixieValue,
+    I2cReg_HvValueLowByte,
+    I2cReg_HvValueHighByte,
+    I2cReg_NixieDisplayRefresh,
+    I2cReg_NixiePwmValue,
+    I2cReg_NixieBrightnessCompensation,
+} I2cRegisters_e;
 
 #define I2C_DEFAULT_ADDRESS (uint8_t)(0x20)
 
@@ -28,20 +33,19 @@ uint8_t* i2c_address = (uint8_t*)0x08003700;
 bool unsafe_hv = true;
 
 void onWrite(uint8_t reg, uint8_t length) {
-    switch (reg) {
-    case I2C_ADDRESS_REGISTER:
-        if (*i2c_address != i2c_registers[I2C_ADDRESS_REGISTER]) {
+    switch ((I2cRegisters_e)reg) {
+    case I2cReg_Address:
+        if (*i2c_address != i2c_registers[I2cReg_Address]) {
             change_address = true;
-            new_i2c_address = i2c_registers[I2C_ADDRESS_REGISTER];
+            new_i2c_address = i2c_registers[I2cReg_Address];
         }
         break;
 
-    case I2C_NIXIE_VALUE_REGISTER:
+    case I2cReg_NixieValue:
         if (!unsafe_hv) {
             if (i2c_registers[reg] != 0xff) {
                 Nixie_TurnOn(Nixie_FromUINT8(i2c_registers[reg] & 0b1111));
-                if ((i2c_registers[I2C_NIXIE_VALUE_REGISTER] & 0b10000000) !=
-                    0) {
+                if ((i2c_registers[I2cReg_NixieValue] & 0b10000000) != 0) {
                     Nixie_CommaOn();
                 } else {
                     Nixie_CommaOff();
@@ -50,11 +54,11 @@ void onWrite(uint8_t reg, uint8_t length) {
             } else {
                 Nixie_TurnOff();
             }
-            i2c_registers[I2C_NIXIE_VALUE_REGISTER] = Nixie_GetCurrentSeg();
+            i2c_registers[I2cReg_NixieValue] = Nixie_GetCurrentSeg();
         }
         break;
 
-    case I2C_Nixie_DisplayRefresh_REGISTER:
+    case I2cReg_NixieDisplayRefresh:
         if ((uint16_t)i2c_registers[reg] != 0) {
             Nixie_DisplayRefresh((uint16_t)i2c_registers[reg]);
         } else {
@@ -62,20 +66,18 @@ void onWrite(uint8_t reg, uint8_t length) {
         }
         break;
 
-    case I2C_NIXIE_PWM_VALUE_REGISTER:
+    case I2cReg_NixiePwmValue:
+        Nixie_PWM_SetDutyCycle(i2c_registers[reg]);
+        break;
+    case I2cReg_NixieBrightnessCompensation:
+        break;
+
+    default:
         break;
     }
 }
 
 void onRead(uint8_t reg) {
-    switch (reg) {
-    case I2C_ADDRESS_REGISTER:
-        // i2c_registers[reg] = *i2c_address;
-        break;
-    case I2C_NIXIE_VALUE_REGISTER:
-        // i2c_registers[reg] = nixieToUINT8(nixieGetCurrent());
-        break;
-    }
 }
 
 static void unlockFlash(void) {
@@ -146,11 +148,11 @@ int main() {
     funAnalogInit();
 
     // Initialise led
-    funPinMode(PA2, GPIO_Speed_10MHz | GPIO_CNF_OUT_PP);
+    funPinMode(LED_PIN, GPIO_Speed_10MHz | GPIO_CNF_OUT_PP);
     // Initialise adc - high voltage monitoring
     funPinMode(PA1, GPIO_CFGLR_IN_ANALOG);
 
-    funDigitalWrite(PA2, FUN_HIGH);
+    funDigitalWrite(LED_PIN, FUN_HIGH);
     Nixie_Init();
     Nixie_DisplayRefresh(2);
 
@@ -162,37 +164,37 @@ int main() {
         // Address not set yet, use I2C_DEFAULT_ADDRESS
         SetupI2CSlave(I2C_DEFAULT_ADDRESS, i2c_registers, sizeof(i2c_registers),
                       onWrite, onRead, false);
-        i2c_registers[I2C_ADDRESS_REGISTER] = I2C_DEFAULT_ADDRESS;
+        i2c_registers[I2cReg_Address] = I2C_DEFAULT_ADDRESS;
     } else {
         SetupI2CSlave(*i2c_address, i2c_registers, sizeof(i2c_registers),
                       onWrite, onRead, false);
-        i2c_registers[I2C_ADDRESS_REGISTER] = *i2c_address;
+        i2c_registers[I2cReg_Address] = *i2c_address;
     }
 
-    i2c_registers[I2C_NIXIE_VALUE_REGISTER] = 0xff; // Nixie off
+    i2c_registers[I2cReg_NixieValue] = 0xff; // Nixie off
 
-    funDigitalWrite(PA2, FUN_LOW);
+    funDigitalWrite(LED_PIN, FUN_LOW);
 
     uint16_t hv_value = 0;
 
     while (1) {
         if (change_address) {
-            funDigitalWrite(PA2, FUN_HIGH);
+            funDigitalWrite(LED_PIN, FUN_HIGH);
             changeAddress();
         }
         hv_value = (uint16_t)funAnalogRead(ANALOG_1);
-        i2c_registers[I2C_HV_VALUE_REGISTER_LB] = (uint8_t)(hv_value & 0xff);
-        i2c_registers[I2C_HV_VALUE_REGISTER_HB] = (uint8_t)(hv_value >> 8);
+        i2c_registers[I2cReg_HvValueLowByte] = (uint8_t)(hv_value & 0xff);
+        i2c_registers[I2cReg_HvValueHighByte] = (uint8_t)(hv_value >> 8);
         // unsafe_hv = hv_value > HV_UPPER_LIMIT;
         unsafe_hv =
             false; // TODO: replace 20k resistor with 15k to measure voltage
         if (unsafe_hv) {
             Nixie_CommaOff();
             Nixie_TurnOff();
-            funDigitalWrite(PA2, FUN_HIGH);
+            funDigitalWrite(LED_PIN, FUN_HIGH);
         } else {
-            funDigitalWrite(PA2, FUN_LOW);
-            // Nixie_PWM_RefreshEvery1ms();
+            funDigitalWrite(LED_PIN, FUN_LOW);
+            Nixie_PWM_RefreshEvery1ms();
         }
         Delay_Us(DEFAULT_LOOP_TIME_US);
     }

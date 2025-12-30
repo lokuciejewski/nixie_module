@@ -1,6 +1,7 @@
 .vscode
 ch32fun
 main.bin
+main_ext.bin
 main.elf
 main.lst
 main.hex
