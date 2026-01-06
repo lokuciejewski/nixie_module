@@ -6,7 +6,7 @@
 
 static NixieSegment current_segment = NIXIE_SEG_NO_SEG;
 static uint8_t pwm_counter = 0;
-static uint8_t pwm_duty_cycle_setting = 10; // x5, so 10 for 50% etc.
+static uint32_t pwm_duty_cycle_setting = 10; // x5, so 10 for 50% etc. 32-bit to ensure atomic operations
 static bool comma_on = false;
 static bool brigthness_compensation = true;
 

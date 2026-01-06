@@ -11,6 +11,7 @@ typedef enum : uint8_t {
     I2cReg_HvValueHighByte,
     I2cReg_NixiePwmValue,
     I2cReg_NixieBrightnessCompensation,
+    I2cReg_Size,
 } I2cRegisters_e;
 
 #define I2C_DEFAULT_ADDRESS (uint8_t)(0x20)
@@ -23,7 +24,7 @@ typedef enum : uint8_t {
 
 #define DEFAULT_LOOP_TIME_US 450U
 
-volatile uint8_t i2c_registers[4] = {0x00};
+volatile uint8_t i2c_registers[I2cReg_Size - 1] = {0x00};
 bool change_address = false;
 uint8_t new_i2c_address = 0x00;
 uint8_t* i2c_address = (uint8_t*)0x08003700;
@@ -56,7 +57,7 @@ void onWrite(uint8_t reg, uint8_t length) {
         }
         break;
     case I2cReg_NixiePwmValue:
-        Nixie_PWM_SetDutyCycle(i2c_registers[reg]);
+        Nixie_PWM_SetDutyCycle(i2c_registers[I2cReg_NixiePwmValue]);
         break;
     case I2cReg_NixieBrightnessCompensation:
         // TODO: implement
