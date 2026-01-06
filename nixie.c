@@ -48,14 +48,17 @@ void Nixie_PWM_SetDutyCycle(uint8_t new_duty_cycle) {
 }
 
 static void refreshSegment(NixieSegment seg, uint16_t delay_ms) {
-    bool current_state = funDigitalRead(seg);
-    funDigitalWrite(seg, !current_state);
+    funDigitalWrite(seg, true);
     Delay_Ms(delay_ms);
-    funDigitalWrite(seg, current_state);
+    funDigitalWrite(seg, false);
     Delay_Ms(delay_ms);
 }
 
 void Nixie_DisplayRefresh(uint16_t delay_ms) {
+    funDigitalWrite(current_segment, FUN_LOW);
+    if (comma_on) {
+        funDigitalWrite(NIXIE_SEG_PL, FUN_LOW);
+    }
     refreshSegment(NIXIE_SEG_0, delay_ms);
     refreshSegment(NIXIE_SEG_1, delay_ms);
     refreshSegment(NIXIE_SEG_2, delay_ms);
@@ -68,7 +71,10 @@ void Nixie_DisplayRefresh(uint16_t delay_ms) {
     refreshSegment(NIXIE_SEG_9, delay_ms);
     refreshSegment(NIXIE_SEG_PL, delay_ms);
     if (current_segment != NIXIE_SEG_NO_SEG) {
-        Nixie_TurnOn(current_segment);
+        funDigitalWrite(current_segment, FUN_HIGH);
+    }
+    if (comma_on) {
+        funDigitalWrite(NIXIE_SEG_PL, FUN_HIGH);
     }
 }
 
@@ -105,7 +111,8 @@ void Nixie_CommaOn(void) {
         funDigitalWrite(NIXIE_SEG_PL, FUN_HIGH);
         comma_on = true;
         if (brigthness_compensation) {
-            pwm_duty_cycle_setting = (pwm_duty_cycle_setting + 1) % PWM_MAX_COUNTER;
+            pwm_duty_cycle_setting =
+                (pwm_duty_cycle_setting + 1) % PWM_MAX_COUNTER;
         }
     }
 }
@@ -113,7 +120,7 @@ void Nixie_CommaOn(void) {
 void Nixie_CommaOff(void) {
     if (comma_on) {
         funDigitalWrite(NIXIE_SEG_PL, FUN_LOW);
-        comma_on = false;        
+        comma_on = false;
         if (brigthness_compensation && pwm_duty_cycle_setting > 0) {
             pwm_duty_cycle_setting = (pwm_duty_cycle_setting - 1);
         }

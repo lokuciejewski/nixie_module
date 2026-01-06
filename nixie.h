@@ -15,7 +15,7 @@ typedef enum {
     NIXIE_SEG_8 = PD4,
     NIXIE_SEG_9 = PD5,
     NIXIE_SEG_PL = PC0,
-    NIXIE_SEG_NO_SEG = 0,
+    NIXIE_SEG_NO_SEG = 0xff,
 } NixieSegment;
 
 void Nixie_Init(void);

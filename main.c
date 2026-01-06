@@ -1,7 +1,6 @@
 #include "ch32fun/ch32fun/ch32fun.h"
 #include "i2c_slave.h"
 #include "nixie.h"
-#include "stdio.h"
 
 #define LED_PIN PA2
 
@@ -10,7 +9,6 @@ typedef enum : uint8_t {
     I2cReg_NixieValue,
     I2cReg_HvValueLowByte,
     I2cReg_HvValueHighByte,
-    I2cReg_NixieDisplayRefresh,
     I2cReg_NixiePwmValue,
     I2cReg_NixieBrightnessCompensation,
 } I2cRegisters_e;
@@ -57,19 +55,11 @@ void onWrite(uint8_t reg, uint8_t length) {
             i2c_registers[I2cReg_NixieValue] = Nixie_GetCurrentSeg();
         }
         break;
-
-    case I2cReg_NixieDisplayRefresh:
-        if ((uint16_t)i2c_registers[reg] != 0) {
-            Nixie_DisplayRefresh((uint16_t)i2c_registers[reg]);
-        } else {
-            Nixie_DisplayRefresh(2);
-        }
-        break;
-
     case I2cReg_NixiePwmValue:
         Nixie_PWM_SetDutyCycle(i2c_registers[reg]);
         break;
     case I2cReg_NixieBrightnessCompensation:
+        // TODO: implement
         break;
 
     default:
@@ -77,8 +67,7 @@ void onWrite(uint8_t reg, uint8_t length) {
     }
 }
 
-void onRead(uint8_t reg) {
-}
+void onRead(uint8_t reg) {}
 
 static void unlockFlash(void) {
     FLASH->KEYR = FLASH_KEY1;
@@ -154,7 +143,6 @@ int main() {
 
     funDigitalWrite(LED_PIN, FUN_HIGH);
     Nixie_Init();
-    Nixie_DisplayRefresh(2);
 
     // Initialize I2C slave
     funPinMode(PC1, GPIO_CFGLR_OUT_10Mhz_AF_OD); // SDA
@@ -173,6 +161,7 @@ int main() {
 
     i2c_registers[I2cReg_NixieValue] = 0xff; // Nixie off
 
+    Delay_Ms(10); // Just to make sure the led blinks
     funDigitalWrite(LED_PIN, FUN_LOW);
 
     uint16_t hv_value = 0;
