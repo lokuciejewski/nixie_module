@@ -6,7 +6,8 @@
 
 static NixieSegment current_segment = NIXIE_SEG_NO_SEG;
 static uint8_t pwm_counter = 0;
-static uint32_t pwm_duty_cycle_setting = 10; // x5, so 10 for 50% etc. 32-bit to ensure atomic operations
+static uint32_t pwm_duty_cycle_setting =
+    10; // x5, so 10 for 50% etc. 32-bit to ensure atomic operations
 static bool comma_on = false;
 static bool brigthness_compensation = true;
 
@@ -86,22 +87,32 @@ void Nixie_DisableCommaBrightnessCompensation(void) {
     brigthness_compensation = false;
 }
 
-void Nixie_TurnOn(NixieSegment seg) {
-    if (seg != current_segment) {
-        if (seg == NIXIE_SEG_NO_SEG) {
-            Nixie_TurnOff();
-        } else {
-            funDigitalWrite(current_segment, FUN_LOW);
-            funDigitalWrite(seg, FUN_HIGH);
-            current_segment = seg;
+static const NixieSegment SEGMENTS[] = {
+    NIXIE_SEG_0, NIXIE_SEG_1, NIXIE_SEG_2, NIXIE_SEG_3, NIXIE_SEG_4,
+    NIXIE_SEG_5, NIXIE_SEG_6, NIXIE_SEG_7, NIXIE_SEG_8, NIXIE_SEG_9};
+
+inline static void Nixie_TurnOffOtherSegments(NixieSegment seg) {
+    for (uint8_t i = 0; i < sizeof(SEGMENTS) / sizeof(NixieSegment); i++) {
+        if (SEGMENTS[i] != seg) {
+            funDigitalWrite(SEGMENTS[i], FUN_LOW);
         }
+    }
+}
+
+void Nixie_TurnOn(NixieSegment seg) {
+    if (seg == NIXIE_SEG_NO_SEG) {
+        Nixie_TurnOff();
     } else {
+        Nixie_TurnOffOtherSegments(seg);
         funDigitalWrite(seg, FUN_HIGH);
+        current_segment = seg;
     }
 }
 
 void Nixie_TurnOff(void) {
-    funDigitalWrite(current_segment, FUN_LOW);
+    for (uint8_t i = 0; i < sizeof(SEGMENTS) / sizeof(NixieSegment); i++) {
+        funDigitalWrite(SEGMENTS[i], FUN_LOW);
+    }
     current_segment = NIXIE_SEG_NO_SEG;
     Nixie_CommaOff();
 }
