@@ -6,3 +6,7 @@ main.elf
 main.lst
 main.hex
 main.map
+kicad_files/module/gerber_to_order
+kicad_files/module/pin_adapter-backups
+kicad_files/module/production
+kicad_files/module/fabrication-toolkit-options.json
